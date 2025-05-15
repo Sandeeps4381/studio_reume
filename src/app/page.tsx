@@ -48,19 +48,20 @@ export default function ResumeShowcasePage() {
     setIsLoadingJobs(true);
     try {
       // Simulate network delay for a better UX feel of loading
-      await new Promise(resolve => setTimeout(resolve, 750));
-      const response = await fetch('/data/jobs.json'); // Fetching from public/data/jobs.json
+      // await new Promise(resolve => setTimeout(resolve, 750)); // You can remove this if DB is fast
+      const response = await fetch('/api/jobs'); // Fetching from the new API route
       if (!response.ok) {
-        throw new Error('Failed to fetch job titles');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fetch job titles');
       }
       const data: JobTitle[] = await response.json();
       setJobTitles(data);
       setShowJobSuggestions(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching job titles:", error);
       toast({
         title: "Error",
-        description: "Could not load job suggestions. Please try again.",
+        description: `Could not load job suggestions: ${error.message || 'Please try again.'}`,
         variant: "destructive",
       });
       setShowJobSuggestions(false);
