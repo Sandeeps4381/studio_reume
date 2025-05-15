@@ -47,12 +47,19 @@ export default function ResumeShowcasePage() {
 
     setIsLoadingJobs(true);
     try {
-      // Simulate network delay for a better UX feel of loading
-      // await new Promise(resolve => setTimeout(resolve, 750)); // You can remove this if DB is fast
-      const response = await fetch('/api/jobs'); // Fetching from the new API route
+      const response = await fetch('/api/jobs'); 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to fetch job titles');
+        let errorMessage = 'Failed to fetch job titles';
+        try {
+          const errorData = await response.json();
+          // Prioritize the 'error' field from API response for more specific details
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (jsonError) {
+          // Fallback if response is not JSON
+          console.error("API response was not JSON:", await response.text().catch(() => "Could not read response text."));
+          errorMessage = `Server error: ${response.statusText} (Status: ${response.status})`;
+        }
+        throw new Error(errorMessage);
       }
       const data: JobTitle[] = await response.json();
       setJobTitles(data);
@@ -121,3 +128,4 @@ export default function ResumeShowcasePage() {
     </>
   );
 }
+
