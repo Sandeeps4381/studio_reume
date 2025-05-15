@@ -37,12 +37,13 @@ export async function GET() {
       port: dbPort,
     });
 
-    // Assuming your table has 'id' and 'title' columns. Adjust if necessary.
-    const [rows] = await connection.execute(`SELECT id, title FROM ${dbTable}`);
+    // Assuming your table has 'id' and 'name' columns.
+    // The 'name' column from the DB will be mapped to 'title' for the frontend.
+    const [rows] = await connection.execute(`SELECT id, name FROM ${dbTable}`);
     
     const jobTitles = (rows as any[]).map(row => ({
       id: Number(row.id), // Ensure id is a number
-      title: String(row.title), // Ensure title is a string
+      title: String(row.name), // Map DB 'name' column to 'title' property
     }));
 
     await connection.end();
@@ -57,3 +58,4 @@ export async function GET() {
     return NextResponse.json({ message: 'Failed to fetch job titles', error: error.message }, { status: 500 });
   }
 }
+
