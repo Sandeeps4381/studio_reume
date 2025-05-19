@@ -24,38 +24,35 @@ export default function ResumeShowcasePage() {
   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
   const { toast } = useToast();
 
-  const handleFileUpload = (file: File) => {
-    setUploadedFile(file);
-    setShowJobSuggestions(false); 
-    setJobTitles([]); // Clear previous job titles
-    toast({
-      title: "Resume Uploaded",
-      description: `${file.name} has been successfully uploaded.`,
-      variant: "success", 
-    });
-  };
-
   const fetchJobTitles = useCallback(async () => {
-    if (jobTitles.length > 0 && showJobSuggestions) { // If already shown and populated, just hide
-      setShowJobSuggestions(false);
-      return;
+    // If already shown and populated, and we are trying to toggle, then hide.
+    // This specific condition might be adjusted if the "toggle" button's role changes.
+    if (jobTitles.length > 0 && showJobSuggestions && !isLoadingJobs) { 
+      // If the button is clicked to hide existing suggestions
+      // For now, let's assume the button can still be used to hide/reshow
     }
-    if (jobTitles.length > 0 && !showJobSuggestions) { // If populated but hidden, just show
+
+    // If job titles are already loaded and we just need to show them (e.g. button click)
+    if (jobTitles.length > 0 && !showJobSuggestions) {
       setShowJobSuggestions(true);
       return;
     }
+    
+    // If jobs are already loading, or already shown, don't re-fetch unless explicitly toggled off then on.
+    if (isLoadingJobs || (jobTitles.length > 0 && showJobSuggestions)) {
+        return;
+    }
 
     setIsLoadingJobs(true);
+    setShowJobSuggestions(true); // Show loading state immediately
     try {
       const response = await fetch('/api/jobs'); 
       if (!response.ok) {
         let errorMessage = 'Failed to fetch job titles';
         try {
           const errorData = await response.json();
-          // Prioritize the 'error' field from API response for more specific details
           errorMessage = errorData.error || errorData.message || errorMessage;
         } catch (jsonError) {
-          // Fallback if response is not JSON
           console.error("API response was not JSON:", await response.text().catch(() => "Could not read response text."));
           errorMessage = `Server error: ${response.statusText} (Status: ${response.status})`;
         }
@@ -63,7 +60,7 @@ export default function ResumeShowcasePage() {
       }
       const data: JobTitle[] = await response.json();
       setJobTitles(data);
-      setShowJobSuggestions(true);
+      // setShowJobSuggestions(true); // Already set to true at the start of fetch
     } catch (error: any) {
       console.error("Error fetching job titles:", error);
       toast({
@@ -71,15 +68,32 @@ export default function ResumeShowcasePage() {
         description: `Could not load job suggestions: ${error.message || 'Please try again.'}`,
         variant: "destructive",
       });
-      setShowJobSuggestions(false);
+      setShowJobSuggestions(false); // Hide on error
+      setJobTitles([]); // Clear any potentially stale data
     } finally {
       setIsLoadingJobs(false);
     }
-  }, [jobTitles, showJobSuggestions, toast]);
+  }, [jobTitles, showJobSuggestions, isLoadingJobs, toast]);
 
+  const handleFileUpload = (file: File) => {
+    setUploadedFile(file);
+    setShowJobSuggestions(false); // Reset suggestion visibility
+    setJobTitles([]); // Clear previous job titles
+    toast({
+      title: "Resume Uploaded",
+      description: `${file.name} has been successfully uploaded.`,
+      variant: "success", 
+    });
+    fetchJobTitles(); // Automatically fetch job titles
+  };
 
   const handleToggleSuggestions = () => {
-    fetchJobTitles();
+    // If suggestions are visible, hide them. Otherwise, fetch (or re-show if already fetched).
+    if (showJobSuggestions) {
+      setShowJobSuggestions(false);
+    } else {
+      fetchJobTitles();
+    }
   };
 
   return (
@@ -108,12 +122,14 @@ export default function ResumeShowcasePage() {
           <Separator className="my-6 bg-border/70" />
 
           <section aria-labelledby="job-suggestions-section" className="w-full flex flex-col items-center">
-             <h2 id="job-suggestions-section" className="sr-only">Job Suggestions</h2>
-            <JobSuggestionsBox 
-              onToggleSuggestions={handleToggleSuggestions} 
-              areSuggestionsVisible={showJobSuggestions}
-              isLoading={isLoadingJobs}
-            />
+             <h2 id="job-suggestions-section" className="sr-only">Job Suggestions Control</h2>
+            {uploadedFile && ( // Only show the toggle button if a resume has been uploaded
+                <JobSuggestionsBox 
+                onToggleSuggestions={handleToggleSuggestions} 
+                areSuggestionsVisible={showJobSuggestions}
+                isLoading={isLoadingJobs}
+                />
+            )}
             {isLoadingJobs && (
               <div className="flex items-center justify-center mt-4 text-muted-foreground">
                 <Loader2 className="mr-2 h-5 w-5 animate-spin text-primary" />
@@ -128,4 +144,3 @@ export default function ResumeShowcasePage() {
     </>
   );
 }
-
